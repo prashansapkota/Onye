@@ -1,7 +1,9 @@
+from app.agents.google_adk_agent import GoogleADKReconciliationAgent
+
+
 class DataQualityService:
-    def validate(self, payload: dict) -> dict:
-        return {
-            "message": "Data quality validation scaffold is ready.",
-            "implementation_status": "pending",
-            "received_keys": sorted(payload.keys()),
-        }
+    def __init__(self, agent: GoogleADKReconciliationAgent) -> None:
+        self.agent = agent
+
+    async def validate(self, payload: dict) -> dict:
+        return await self.agent.run_async(payload)

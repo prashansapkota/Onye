@@ -2,8 +2,8 @@ from app.agents.google_adk_agent import GoogleADKReconciliationAgent
 
 
 class ReconciliationService:
-    def __init__(self, agent: GoogleADKReconciliationAgent | None = None) -> None:
-        self.agent = agent or GoogleADKReconciliationAgent()
+    def __init__(self, agent: GoogleADKReconciliationAgent) -> None:
+        self.agent = agent
 
-    def reconcile_medication(self, payload: dict) -> dict:
-        return self.agent.run(payload)
+    async def reconcile_medication(self, payload: dict) -> dict:
+        return await self.agent.run_async(payload)
