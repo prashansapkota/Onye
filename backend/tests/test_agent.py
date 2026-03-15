@@ -151,6 +151,54 @@ def test_verify_readiness_false_when_no_key(mock_runner_cls, _mock_build, monkey
 
 
 # ---------------------------------------------------------------------------
+# Cache tests
+# ---------------------------------------------------------------------------
+
+@patch("app.agents.google_adk_agent._build_agent", return_value=MagicMock())
+@patch("app.agents.google_adk_agent.InMemoryRunner")
+def test_cache_returns_same_result_without_second_api_call(mock_runner_cls, _mock_build):
+    call_count = 0
+
+    async def counting_run_async(**kwargs):
+        nonlocal call_count
+        call_count += 1
+        part = MagicMock()
+        part.text = json.dumps(MOCK_RECONCILE_RESPONSE)
+        event = MagicMock()
+        event.is_final_response.return_value = True
+        event.content.parts = [part]
+        yield event
+
+    runner = MagicMock()
+    runner.run_async = counting_run_async
+    mock_runner_cls.return_value = runner
+
+    payload = {"sources": [{"system": "Primary Care", "medication": "Metformin 500mg", "source_reliability": "high"}]}
+    agent = GoogleADKReconciliationAgent()
+
+    result1 = asyncio.run(agent.run_async(payload))
+    result2 = asyncio.run(agent.run_async(payload))
+
+    assert result1 == result2
+    assert call_count == 1
+
+
+@patch("app.agents.google_adk_agent._build_agent", return_value=MagicMock())
+@patch("app.agents.google_adk_agent.InMemoryRunner")
+def test_different_payloads_not_served_from_cache(mock_runner_cls, _mock_build):
+    mock_runner_cls.return_value = _make_mock_runner(MOCK_RECONCILE_RESPONSE)
+
+    agent = GoogleADKReconciliationAgent()
+    asyncio.run(agent.run_async({"key": "value_a"}))
+
+    mock_runner_cls.return_value = _make_mock_runner(MOCK_QUALITY_RESPONSE)
+    agent._runner = mock_runner_cls.return_value
+
+    result = asyncio.run(agent.run_async({"key": "value_b"}))
+    assert result == MOCK_QUALITY_RESPONSE
+
+
+# ---------------------------------------------------------------------------
 # Service tests
 # ---------------------------------------------------------------------------
 

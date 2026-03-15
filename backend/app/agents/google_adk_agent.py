@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 
@@ -51,7 +52,7 @@ def _build_agent() -> LlmAgent:
     os.environ.setdefault("ANTHROPIC_API_KEY", settings.anthropic_api_key)
 
     return LlmAgent(
-        model=LiteLlm(model="anthropic/claude-opus-4-6"),
+        model=LiteLlm(model="anthropic/claude-opus-4-5-20251101"),
         name="ehr_reconciliation_agent",
         description=(
             "Clinical EHR agent that reconciles conflicting medication records "
@@ -75,11 +76,20 @@ class GoogleADKReconciliationAgent:
     def __init__(self) -> None:
         self._agent = _build_agent()
         self._runner = InMemoryRunner(agent=self._agent, app_name="onye-ehr")
+        self._cache: dict[str, dict] = {}
 
     def verify_readiness(self) -> bool:
         return bool(settings.anthropic_api_key)
 
+    @staticmethod
+    def _cache_key(payload: dict) -> str:
+        return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
     async def run_async(self, payload: dict) -> dict:
+        key = self._cache_key(payload)
+        if key in self._cache:
+            return self._cache[key]
+
         final_text = ""
         async for event in self._runner.run_async(
             user_id="api",
@@ -91,4 +101,6 @@ class GoogleADKReconciliationAgent:
                     if part.text:
                         final_text += part.text
 
-        return json.loads(final_text)
+        result = json.loads(final_text)
+        self._cache[key] = result
+        return result
