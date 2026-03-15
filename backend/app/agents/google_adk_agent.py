@@ -1,4 +1,3 @@
-import asyncio
 import json
 import os
 
@@ -79,9 +78,6 @@ class GoogleADKReconciliationAgent:
 
     def verify_readiness(self) -> bool:
         return bool(settings.anthropic_api_key)
-
-    def run(self, payload: dict) -> dict:
-        return asyncio.run(self.run_async(payload))
 
     async def run_async(self, payload: dict) -> dict:
         final_text = ""
